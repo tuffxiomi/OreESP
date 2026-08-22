@@ -1,0 +1,46 @@
+#include "signatures.hpp"
+#include <pl/memory/Signature.hpp>
+#include <array>
+#include <string>
+#include <vector>
+
+namespace oreesp::memory {
+namespace {
+constexpr std::size_t count = static_cast<std::size_t>(Id::ClientInstanceGetLocalPlayer) + 1;
+std::array<std::uintptr_t, count> addresses{};
+const std::array<Definition, count> defs{{
+    {Id::RenderLevel, "? ? ? FC ? ? ? 6D ? ? ? 6D ? ? ? 6D ? ? ? A9 ? ? ? A9 ? ? ? A9 ? ? ? A9 ? ? ? A9 ? ? ? A9 ? ? ? 91 ? ? ? D1 57 D0 3B D5"},
+    {Id::TessellatorBegin, "? ? ? A9 ? ? ? A9 ? ? ? A9 ? ? ? A9 FD 03 00 91 ? ? ? 39 ? ? ? 39 08 01 09 2A"},
+    {Id::TessellatorColor, "? ? ? 52 ? ? ? 39 04 01 27 1E"},
+    {Id::TessellatorVertex, "? ? ? D1 ? ? ? FD ? ? ? 6D ? ? ? A9 ? ? ? F9 ? ? ? A9 ? ? ? A9 ? ? ? A9 ? ? ? A9 ? ? ? 91 58 D0 3B D5 ? ? ? F9"},
+    {Id::RenderMeshImmediately2, "? ? ? A9 ? ? ? A9 ? ? ? A9 ? ? ? A9 FD 03 00 91 ? ? ? D1 57 D0 3B D5 F6 03 00 AA E0 03 01 AA ? ? ? F9 F4 03 03 AA"},
+    {Id::RenderMeshImmediately, "? ? ? A9 ? ? ? F9 ? ? ? A9 ? ? ? A9 ? ? ? A9 FD 03 00 91 ? ? ? D1 58 D0 3B D5 F7 03 00 AA E0 03 01 AA ? ? ? F9 F4 03 04 AA"},
+    {Id::BlockSourceGetBlock, "? ? ? D1 ? ? ? A9 ? ? ? A9 ? ? ? A9 ? ? ? 91 56 D0 3B D5 ? ? ? F9 ? ? ? F9 ? ? ? B9 ? ? ? 79 1F 01 09 6B ? ? ? 54 ? ? ? 79 F3 03 00 AA 1F 01 09 6B ? ? ? 54 E0 03 00 91"},
+    {Id::ClientInstanceUpdate, "? ? ? A9 ? ? ? A9 ? ? ? A9 ? ? ? A9 ? ? ? A9 ? ? ? A9 FD 03 00 91 ? ? ? D1 59 D0 3B D5 F3 03 00 AA F4 03 01 2A ? ? ? F9 ? ? ? F8 ? ? ? F9 ? ? ? F9"},
+    {Id::ClientInstanceGetLocalPlayer, "? ? ? D1 ? ? ? A9 ? ? ? F9 ? ? ? 91 53 D0 3B D5 E8 03 00 AA ? ? ? 91 ? ? ? F9 ? ? ? 91 ? ? ? F8 ? ? ? 95 ? ? ? 91 ? ? ? 95 ? ? ? 36 ? ? ? 91 ? ? ? 52 ? ? ? 94"},
+}};
+}
+
+bool resolveAll(std::string_view libraryName) {
+    std::vector<std::string> patterns;
+    patterns.reserve(defs.size());
+    for (const auto& d : defs) patterns.emplace_back(d.pattern);
+
+    const auto result = pl::memory::resolveSignatures(patterns, std::string(libraryName).c_str());
+    addresses.fill(0);
+    bool any = false;
+    for (const auto& d : defs) {
+        const auto it = result.find(std::string(d.pattern));
+        if (it == result.end() || it->second == 0) continue;
+        addresses[static_cast<std::size_t>(d.id)] = it->second;
+        any = true;
+    }
+    return any;
+}
+
+std::uintptr_t resolve(Id id) {
+    const auto i = static_cast<std::size_t>(id);
+    return i < addresses.size() ? addresses[i] : 0;
+}
+
+}

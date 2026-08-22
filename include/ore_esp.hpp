@@ -30,5 +30,3 @@ private:
 
     friend class OreEspRuntime;
 };
-
-PL_REGISTER_MOD(OreEspMod, OreEspMod::instance())
